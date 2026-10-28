@@ -6,7 +6,7 @@ TreeToolKit 集中管理原生窗口贴附、节点处理、浮层、窗口控�
 | --- | --- |
 | 版本 | `1.0.0` |
 | 目标 | .NET 10 Windows、Dalamud API 15 |
-| 源码依赖 | TreeTools、Omni 固定 KamiToolKit 分支、OmenTools |
+| 源码依赖 | TreeTools、上游 KamiToolKit 固定提交、OmenTools |
 | Omni 中用途 | 原生界面模块、字体和窗口辅助 |
 
 ## 它补上了什么
@@ -15,7 +15,7 @@ TreeToolKit 集中管理原生窗口贴附、节点处理、浮层、窗口控�
 | --- | --- |
 | 原生窗口 | 贴附、遮挡判断、Escape 关闭和选择确认 |
 | 节点处理 | 安全解除、销毁、Tooltip 和节点列表修复 |
-| 浮层 | 多个组件共享一套 Overlay 控制器 |
+| 浮层 | 多个组件共享 Overlay 控制器，地图浮层支持可配置隐藏键 |
 | 缩放恢复 | 保留 Kami 窗口的用户缩放设置 |
 | 字体 | 游戏字体、安装字体和 Omni UI 字体句柄 |
 
@@ -63,7 +63,7 @@ if (toolkit is not null)
 | 在线 `.dll` 模块 | 使用与 Omni 相同版本的依赖编译，不打包 KamiToolKit 等共享 DLL |
 | 独立项目使用 | 当前版必须提供 TreeTools、一个兼容的 KamiToolKit 程序集和 OmenTools |
 
-TreeToolKit 以 KamiToolKit 为核心。Omni 使用自己固定的 [KamiToolKit](https://github.com/YouShux/KamiToolKit) 分支构建和发布，不额外引用上游 KamiToolKit 程序集。当前字体与少量辅助功能还使用 OmenTools。
+TreeToolKit 以 KamiToolKit 为核心。Omni 固定使用 [上游 KamiToolKit](https://github.com/MidoriKami/KamiToolKit) 提交构建和发布，不修改子模块源码，也不额外引用其他 KamiToolKit 程序集。地图浮层隐藏键、节点安全处理和窗口兼容等 Omni 差分在本库实现；当前字体与少量辅助功能还使用 OmenTools。
 
 ## 系统架构中的位置
 
