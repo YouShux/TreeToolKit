@@ -7,17 +7,19 @@ namespace TreeToolKit;
 public sealed class EscapeCloseController
 {
     private readonly IKeyState keyState;
-    private bool escapePressedLastFrame;
-    private bool suppressEscapeUntilRelease;
+    private bool               escapePressedLastFrame;
+    private bool               suppressEscapeUntilRelease;
 
     public EscapeCloseController(IKeyState keyState) => this.keyState = keyState ?? throw new ArgumentNullException(nameof(keyState));
 
     public bool IsSuppressingEscape => suppressEscapeUntilRelease;
 
-    public void Update(
-        IEscapeClosableWindow first,
+    public void Update
+    (
+        IEscapeClosableWindow  first,
         IEscapeClosableWindow? second = null,
-        IEscapeClosableWindow? third = null)
+        IEscapeClosableWindow? third = null
+    )
     {
         var focusedWindow = ResolveFocusedWindow(first, second, third);
         if (TryConsumeEscape(focusedWindow is not null) && focusedWindow is not null)
@@ -33,8 +35,8 @@ public sealed class EscapeCloseController
         {
             // 松键帧仍需清除游戏输入，避免关闭插件窗口后触发系统菜单。
             keyState[VirtualKey.ESCAPE] = false;
-            escapePressedLastFrame = escapePressed;
-            suppressEscapeUntilRelease = escapePressed;
+            escapePressedLastFrame      = escapePressed;
+            suppressEscapeUntilRelease  = escapePressed;
             return false;
         }
         if (!escapePressed)
@@ -54,15 +56,17 @@ public sealed class EscapeCloseController
             return false;
         }
 
-        suppressEscapeUntilRelease = true;
+        suppressEscapeUntilRelease  = true;
         keyState[VirtualKey.ESCAPE] = false;
         return true;
     }
 
-    private static IEscapeClosableWindow? ResolveFocusedWindow(
-        IEscapeClosableWindow first,
+    private static IEscapeClosableWindow? ResolveFocusedWindow
+    (
+        IEscapeClosableWindow  first,
         IEscapeClosableWindow? second,
-        IEscapeClosableWindow? third)
+        IEscapeClosableWindow? third
+    )
     {
         if (first.IsOpen && first.IsFocused)
         {

@@ -8,7 +8,11 @@ public static unsafe class SelectYesnoConfirmation
 {
     // 调用方在游戏线程校验窗口归属后重试调用；每个新窗口将 checkboxSent 重置为 false。
     // true 仅表示已发送确认，业务结果仍由调用方等待；勾选后返回 false，留待后续更新确认。
-    public static bool TryConfirmWithCheckbox(AddonSelectYesno* addon, ref bool checkboxSent)
+    public static bool TryConfirmWithCheckbox
+    (
+        AddonSelectYesno* addon,
+        ref bool          checkboxSent
+    )
     {
         if (addon == null || !addon->AtkUnitBase.IsAddonAndNodesReady())
             return false;

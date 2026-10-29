@@ -48,7 +48,7 @@ public static unsafe class NativeNodeDetach
                 (AtkResNode*)collisionManager->IntersectingCollisionNode == nativeNode)
             {
                 collisionManager->IntersectingCollisionNode = null;
-                collisionManager->IntersectingAddon = null;
+                collisionManager->IntersectingAddon         = null;
             }
 
             var parent = nativeNode->ParentNode;
@@ -76,7 +76,7 @@ public static unsafe class NativeNodeDetach
             if (hovered is not null)
             {
                 collisionManager->IntersectingCollisionNode = null;
-                collisionManager->IntersectingAddon = null;
+                collisionManager->IntersectingAddon         = null;
             }
         }
 

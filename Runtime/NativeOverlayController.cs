@@ -5,11 +5,11 @@ namespace TreeToolKit;
 public sealed class NativeOverlayController : IDisposable
 {
     private static OverlayController? SharedController;
-    private static int OwnerCount;
+    private static int                OwnerCount;
 
     private readonly OverlayController controller;
-    private readonly List<OverlayNode> nodes = [];
-    private bool disposed;
+    private readonly List<OverlayNode> nodes      = [];
+    private bool                       disposed;
 
     public NativeOverlayController()
     {

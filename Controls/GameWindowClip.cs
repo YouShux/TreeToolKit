@@ -6,8 +6,8 @@ namespace TreeToolKit;
 
 public static unsafe class GameWindowClip
 {
-    private static readonly List<(Vector2 Min, Vector2 Max)> Regions = [];
-    private static int LastFrame = -1;
+    private static readonly List<(Vector2 Min, Vector2 Max)> Regions   = [];
+    private static int                                       LastFrame = -1;
 
     public static IReadOnlyList<(Vector2 Min, Vector2 Max)> GetVisibleRegions()
     {
@@ -61,7 +61,12 @@ public static unsafe class GameWindowClip
         return Regions;
     }
 
-    public static bool IsCoveredByWindow(AtkUnitBase* source, Vector2 minimum, Vector2 maximum)
+    public static bool IsCoveredByWindow
+    (
+        AtkUnitBase* source,
+        Vector2      minimum,
+        Vector2      maximum
+    )
     {
         var manager = RaptureAtkUnitManager.Instance();
         if (manager == null)
@@ -88,7 +93,11 @@ public static unsafe class GameWindowClip
         return false;
     }
 
-    private static void Add(Vector2 min, Vector2 max)
+    private static void Add
+    (
+        Vector2 min,
+        Vector2 max
+    )
     {
         if (min.X < max.X && min.Y < max.Y)
         {

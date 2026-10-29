@@ -11,21 +11,27 @@ namespace TreeToolKit;
 
 public sealed class NativeAddonScaleRestoration : IDisposable
 {
-    private readonly IDictionary addonConfigs;
-    private readonly FieldInfo scaleField;
+    private readonly IDictionary              addonConfigs;
+    private readonly FieldInfo                scaleField;
     private readonly IEnumerable<NativeAddon> nativeAddons;
-    private readonly IAddonLifecycle addonLifecycle;
-    private readonly Func<string, bool> ownsAddon;
-    private bool disposed;
+    private readonly IAddonLifecycle          addonLifecycle;
+    private readonly Func<string, bool>       ownsAddon;
+    private bool                              disposed;
 
-    private NativeAddonScaleRestoration(IDictionary addonConfigs, FieldInfo scaleField, IEnumerable<NativeAddon> nativeAddons,
-        IAddonLifecycle addonLifecycle, Func<string, bool> ownsAddon)
+    private NativeAddonScaleRestoration
+    (
+        IDictionary              addonConfigs,
+        FieldInfo                scaleField,
+        IEnumerable<NativeAddon> nativeAddons,
+        IAddonLifecycle          addonLifecycle,
+        Func<string, bool>       ownsAddon
+    )
     {
-        this.addonConfigs = addonConfigs;
-        this.scaleField = scaleField;
-        this.nativeAddons = nativeAddons;
+        this.addonConfigs   = addonConfigs;
+        this.scaleField     = scaleField;
+        this.nativeAddons   = nativeAddons;
         this.addonLifecycle = addonLifecycle;
-        this.ownsAddon = ownsAddon;
+        this.ownsAddon      = ownsAddon;
         addonLifecycle.RegisterListener(AddonEvent.PreSetup, OnPreSetup);
         try
         {
@@ -38,8 +44,12 @@ public sealed class NativeAddonScaleRestoration : IDisposable
         }
     }
 
-    public static NativeAddonScaleRestoration? Create(IAddonLifecycle addonLifecycle, Func<string, bool> ownsAddon,
-        Action<Exception>? errorReporter = null)
+    public static NativeAddonScaleRestoration? Create
+    (
+        IAddonLifecycle    addonLifecycle,
+        Func<string, bool> ownsAddon,
+        Action<Exception>? errorReporter = null
+    )
     {
         ArgumentNullException.ThrowIfNull(addonLifecycle);
         ArgumentNullException.ThrowIfNull(ownsAddon);
@@ -70,7 +80,11 @@ public sealed class NativeAddonScaleRestoration : IDisposable
         }
     }
 
-    private unsafe void OnPreSetup(AddonEvent type, AddonArgs args)
+    private unsafe void OnPreSetup
+    (
+        AddonEvent type,
+        AddonArgs  args
+    )
     {
         if (disposed || !ownsAddon(args.AddonName) ||
             addonConfigs[args.AddonName] is not { } config)
@@ -88,7 +102,11 @@ public sealed class NativeAddonScaleRestoration : IDisposable
         }
     }
 
-    private unsafe void OnPostSetup(AddonEvent type, AddonArgs args)
+    private unsafe void OnPostSetup
+    (
+        AddonEvent type,
+        AddonArgs  args
+    )
     {
         if (disposed || !ownsAddon(args.AddonName))
             return;
@@ -99,7 +117,7 @@ public sealed class NativeAddonScaleRestoration : IDisposable
             if ((AtkUnitBase*)window != addon)
                 continue;
             addon->EnableTitleBarContextMenu = window.EnableContextMenu;
-            addon->DisableUserScaling = window.DisableScaleContextOption;
+            addon->DisableUserScaling        = window.DisableScaleContextOption;
             return;
         }
     }

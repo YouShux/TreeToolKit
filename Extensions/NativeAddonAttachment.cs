@@ -7,11 +7,18 @@ namespace TreeToolKit;
 public static unsafe class NativeAddonAttachment
 {
     // 在首次显示和后续跟随时调用；间距与垂直偏移使用源窗口的设计尺寸。
-    public static void SyncBeside(
-        NativeAddon window, AtkUnitBase* addon, AtkUnitBase* sourceAddon, float gap, float verticalOffset, bool preferRight = false)
+    public static void SyncBeside
+    (
+        NativeAddon  window,
+        AtkUnitBase* addon,
+        AtkUnitBase* sourceAddon,
+        float        gap,
+        float        verticalOffset,
+        bool         preferRight = false
+    )
     {
         addon->EnableTitleBarContextMenu = false;
-        addon->DisableUserScaling = false;
+        addon->DisableUserScaling        = false;
         if (sourceAddon->WindowNode == null || addon->WindowNode == null)
             return;
 

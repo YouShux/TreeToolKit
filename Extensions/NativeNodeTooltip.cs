@@ -11,10 +11,18 @@ public static class NativeNodeTooltip
 {
     private static readonly ConditionalWeakTable<NodeBase, TextTooltipState> TextTooltips = new();
 
-    public static void SetTextTooltip(this NodeBase node, ReadOnlySeString tooltip) =>
+    public static void SetTextTooltip
+    (
+        this NodeBase    node,
+        ReadOnlySeString tooltip
+    ) =>
         TextTooltips.GetValue(node, static value => new(value)).Text = tooltip;
 
-    public static unsafe void ShowAnchoredTextTooltip(this NodeBase node, ReadOnlySeString tooltip)
+    public static unsafe void ShowAnchoredTextTooltip
+    (
+        this NodeBase    node,
+        ReadOnlySeString tooltip
+    )
     {
         AtkResNode* nativeNode = node;
         if (nativeNode is null || tooltip.IsEmpty)

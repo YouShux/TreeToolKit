@@ -9,10 +9,10 @@ namespace TreeToolKit;
 
 public sealed unsafe class NativeMapOverlayController : IDisposable
 {
-    private readonly MapOverlayController controller = new();
-    private readonly IKeyState keyState;
-    private bool disposed;
-    private bool requestedVisible = true;
+    private readonly MapOverlayController controller       = new();
+    private readonly IKeyState            keyState;
+    private bool                          disposed;
+    private bool                          requestedVisible = true;
 
     public NativeMapOverlayController(IKeyState keyState) =>
         this.keyState = keyState ?? throw new ArgumentNullException(nameof(keyState));
@@ -24,7 +24,7 @@ public sealed unsafe class NativeMapOverlayController : IDisposable
         get => requestedVisible;
         set
         {
-            requestedVisible = value;
+            requestedVisible     = value;
             controller.IsVisible = value && !IsHideKeyPressed();
         }
     }

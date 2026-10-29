@@ -16,12 +16,12 @@ public static class Fonts
         new("game:TrumpGothic", "Trump Gothic")
     ];
 
-    private static readonly Dictionary<float, IFontHandle> UIHandles = [];
-    private static IReadOnlyList<KeyValuePair<string, string>> InstalledFonts = [];
-    private static object? InstalledFontsSource;
-    private static string CurrentPath = string.Empty;
-    private static float CurrentSize;
-    private static IUiBuilder? UIBuilder;
+    private static readonly Dictionary<float, IFontHandle>     UIHandles            = [];
+    private static IReadOnlyList<KeyValuePair<string, string>> InstalledFonts       = [];
+    private static object?                                     InstalledFontsSource;
+    private static string                                      CurrentPath          = string.Empty;
+    private static float                                       CurrentSize;
+    private static IUiBuilder?                                 UIBuilder;
 
     internal static void Initialize(IUiBuilder uiBuilder)
     {
@@ -39,15 +39,19 @@ public static class Fonts
         }
         finally
         {
-            UIBuilder = null;
-            InstalledFonts = [];
+            UIBuilder            = null;
+            InstalledFonts       = [];
             InstalledFontsSource = null;
-            CurrentPath = string.Empty;
-            CurrentSize = 0;
+            CurrentPath          = string.Empty;
+            CurrentSize          = 0;
         }
     }
 
-    public static bool TryGetGameFamily(string path, out GameFontFamily family)
+    public static bool TryGetGameFamily
+    (
+        string             path,
+        out GameFontFamily family
+    )
     {
         family = path switch
         {
@@ -88,7 +92,7 @@ public static class Fonts
             }
         }
 
-        InstalledFonts = result;
+        InstalledFonts       = result;
         InstalledFontsSource = manager.InstalledFontFamilies;
         return InstalledFonts;
     }
@@ -117,7 +121,11 @@ public static class Fonts
         return font.Available ? font : manager.GetUIFont(scale);
     }
 
-    public static IFontHandle CreateGameFont(GameFontFamily family, float size) =>
+    public static IFontHandle CreateGameFont
+    (
+        GameFontFamily family,
+        float          size
+    ) =>
         (UIBuilder ?? throw new InvalidOperationException("TreeToolKit 运行上下文尚未初始化。"))
         .FontAtlas.NewDelegateFontHandle(e => e.OnPreBuild(tk =>
         {
