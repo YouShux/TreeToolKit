@@ -54,6 +54,12 @@ if (toolkit is not null)
     await toolkit.DisposeAsync();
 ```
 
+挂接到游戏窗口的节点通过 `NativeNodeDetach` 在框架线程解除并释放，随后在同帧重建窗口节点列表。组件节点的原生 `Destroy` 只销毁节点本身；适配递归释放额外托管子节点，并将碰撞根从组件的托管递归与 ULD 对象表移出，保持它存活到组件的 `Deinitialize` 和析构结束，再清除旧父指针与组件指针、释放碰撞根。不能提前释放组件析构仍会访问的内部根，也不能仅清除托管登记表。
+
+`KamiToolKitPluginInterface.Create` 在 Kami 初始化前为其 JSON 选项设置独立的类型信息 resolver。宿主最终通过该适配的 `DisposeAsync` 等待 Kami 释放，并记录剩余节点和本加载上下文的共享节点类型数。以上兼容依赖固定的 Kami 成员布局；不兼容时明确失败，不修改上游源码。
+
+全部绘制入口退出后，`SharedManifestTextures.Release` 定向移除宿主纹理缓存中属于本 collectible 加载上下文的 `(Assembly, 资源名)` 条目，并沿宿主 `ReleaseSelfReference` 释放缓存自身的引用。仍被借用的纹理保留各自引用；不强制销毁共享纹理。适配核对当前 Dalamud 缓存及引用计数方法布局，不兼容时由宿主记录清理跳过原因。
+
 ## 依赖边界
 
 | 使用场景 | 需要做什么 |

@@ -1,3 +1,5 @@
+using System.Reflection;
+using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.BaseTypes;
 using KamiToolKit.BaseTypes.ComponentNode;
@@ -7,6 +9,9 @@ namespace TreeToolKit;
 
 public static unsafe class NativeNodeDetach
 {
+    private static readonly FieldInfo ChildNodesField = typeof(NodeBase).GetField("ChildNodes", BindingFlags.Instance | BindingFlags.NonPublic)
+        ?? throw new MissingFieldException(typeof(NodeBase).FullName, "ChildNodes");
+
     public static bool DetachAndDestroy(NodeBase? node)
     {
         if (node is null)
@@ -16,20 +21,61 @@ public static unsafe class NativeNodeDetach
         if (nativeNode is null)
             return false;
 
+        ThreadSafety.AssertMainThread();
         node.HideTooltip();
         ClearInteractionState(nativeNode);
+        DestroyManagedChildren(node);
         var parent = nativeNode->ParentNode;
         if (parent is not null && parent->GetNodeType() is not NodeType.Component &&
             parent->ChildNode != nativeNode && parent->ChildCount > 0)
             parent->ChildCount--;
+
+        if (node is ComponentNode component)
+        {
+            // Deinitialize 仍会使用碰撞根；从托管递归和 ULD 对象表移交出来，保持其存活到组件析构结束。
+            var collision = component.CollisionNode;
+            AtkResNode* collisionNode = collision;
+            collision.DetachNode();
+            collisionNode->ParentNode = nativeNode;
+            var children = (List<NodeBase>)ChildNodesField.GetValue(component)!;
+            children.Remove(collision);
+            component.Dispose();
+            if ((AtkResNode*)component is not null)
+            {
+                children.Add(collision);
+                throw new InvalidOperationException("KamiToolKit component disposal did not complete.");
+            }
+
+            // 组件已释放，碰撞根不再通过已失效的父节点、组件或 ULD 指针解绑。
+            collisionNode->ParentNode = null;
+            collision.LinkedComponent = null;
+            collision.Dispose();
+            if ((AtkResNode*)collision is not null)
+                throw new InvalidOperationException("KamiToolKit collision root disposal did not complete.");
+            return true;
+        }
 
         node.DetachNode();
         nativeNode->Destroy(true);
         return true;
     }
 
-    // 组件内部根节点由原生 UldManager 终结；托管递归释放会过早销毁它。
+    // 节点的原生 Destroy 不会释放 Component，使用保留内部根节点的完整组件释放路径。
     public static void DetachAndDestroyComponent(ComponentNode? node) => DetachAndDestroy(node);
+
+    private static void DestroyManagedChildren(NodeBase node)
+    {
+        if (ChildNodesField.GetValue(node) is not List<NodeBase> children)
+            throw new InvalidOperationException("KamiToolKit managed node ownership is unavailable.");
+
+        foreach (var child in children.ToArray())
+        {
+            if (node is ComponentNode component && ReferenceEquals(child, component.CollisionNode))
+                DestroyManagedChildren(child);
+            else
+                DetachAndDestroy(child);
+        }
+    }
 
     // KamiToolKit 拆挂非首子节点时不会减少非组件父节点的 ChildCount，累积后游戏会按错误计数遍历节点链表。
     public static bool DetachAndDispose(NodeBase? node)
