@@ -1,5 +1,6 @@
 using System.Reflection;
 using Dalamud.Utility;
+using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.BaseTypes;
 using KamiToolKit.BaseTypes.ComponentNode;
@@ -11,6 +12,9 @@ public static unsafe class NativeNodeDetach
 {
     private static readonly FieldInfo ChildNodesField = typeof(NodeBase).GetField("ChildNodes", BindingFlags.Instance | BindingFlags.NonPublic)
         ?? throw new MissingFieldException(typeof(NodeBase).FullName, "ChildNodes");
+
+    private static readonly PropertyInfo ParentUldManagerProperty = typeof(NodeBase).GetProperty("ParentUldManager", BindingFlags.Instance | BindingFlags.NonPublic)
+        ?? throw new MissingMemberException(typeof(NodeBase).FullName, "ParentUldManager");
 
     public static bool DetachAndDestroy(NodeBase? node)
     {
@@ -24,6 +28,7 @@ public static unsafe class NativeNodeDetach
         ThreadSafety.AssertMainThread();
         node.HideTooltip();
         ClearInteractionState(nativeNode);
+        RestoreUldManagerOwnership(node);
         DestroyManagedChildren(node);
         var parent = nativeNode->ParentNode;
         if (parent is not null && parent->GetNodeType() is not NodeType.Component &&
@@ -35,6 +40,7 @@ public static unsafe class NativeNodeDetach
             // Deinitialize 仍会使用碰撞根；从托管递归和 ULD 对象表移交出来，保持其存活到组件析构结束。
             var collision = component.CollisionNode;
             AtkResNode* collisionNode = collision;
+            RestoreUldManagerOwnership(collision);
             collision.DetachNode();
             collisionNode->ParentNode = nativeNode;
             var children = (List<NodeBase>)ChildNodesField.GetValue(component)!;
@@ -88,6 +94,8 @@ public static unsafe class NativeNodeDetach
         AtkResNode* nativeNode = node;
         if (nativeNode != null)
         {
+            RestoreSubtreeUldManagerOwnership(node);
+
             // 碰撞管理器缓存的悬停节点不会在节点释放时自动清除，先清掉避免同帧读到已释放节点。
             var collisionManager = AtkStage.Instance()->AtkCollisionManager;
             if (collisionManager != null &&
@@ -109,6 +117,44 @@ public static unsafe class NativeNodeDetach
 
         node.Dispose();
         return nativeNode != null;
+    }
+
+    private static void RestoreSubtreeUldManagerOwnership(NodeBase node)
+    {
+        if ((AtkResNode*)node is null)
+            return;
+
+        RestoreUldManagerOwnership(node);
+        if (ChildNodesField.GetValue(node) is not List<NodeBase> children)
+            throw new InvalidOperationException("KamiToolKit managed node ownership is unavailable.");
+
+        foreach (var child in children)
+            RestoreSubtreeUldManagerOwnership(child);
+    }
+
+    private static void RestoreUldManagerOwnership(NodeBase node)
+    {
+        AtkResNode* nativeNode = node;
+        AtkUldManager* owner = null;
+
+        for (var parent = nativeNode->ParentNode; parent is not null; parent = parent->ParentNode)
+        {
+            if (parent->GetNodeType() is not NodeType.Component)
+                continue;
+
+            owner = &((AtkComponentNode*)parent)->Component->UldManager;
+            break;
+        }
+
+        if (owner is null)
+        {
+            var unitManager = RaptureAtkUnitManager.Instance();
+            var addon = unitManager is null ? null : unitManager->GetAddonByNode(nativeNode);
+            if (addon is not null)
+                owner = &addon->UldManager;
+        }
+
+        ParentUldManagerProperty.SetValue(node, Pointer.Box(owner, typeof(AtkUldManager*)));
     }
 
     private static void ClearInteractionState(AtkResNode* nativeNode)

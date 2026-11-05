@@ -3,6 +3,8 @@ using Dalamud.Interface;
 using Dalamud.Interface.GameFonts;
 using Dalamud.Interface.ManagedFontAtlas;
 using OmenTools.OmenService;
+using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace TreeToolKit;
 
@@ -22,6 +24,29 @@ public static class Fonts
     private static string                                      CurrentPath          = string.Empty;
     private static float                                       CurrentSize;
     private static IUiBuilder?                                 UIBuilder;
+    private static readonly ConditionalWeakTable<IFontHandle, object> ObservedFonts = new();
+    private static readonly object ObservedFontsLock = new();
+    private static long RevisionValue;
+
+    public static long Revision => Interlocked.Read(ref RevisionValue);
+
+    public static IFontHandle Observe(IFontHandle font)
+    {
+        if (ObservedFonts.TryGetValue(font, out _))
+            return font;
+        lock (ObservedFontsLock)
+        {
+            if (!ObservedFonts.TryGetValue(font, out _))
+            {
+                font.ImFontChanged += OnFontChanged;
+                ObservedFonts.Add(font, new());
+            }
+        }
+        return font;
+    }
+
+    private static void OnFontChanged(IFontHandle font, ILockedImFont lockedFont) =>
+        Interlocked.Increment(ref RevisionValue);
 
     internal static void Initialize(IUiBuilder uiBuilder)
     {
@@ -39,6 +64,13 @@ public static class Fonts
         }
         finally
         {
+            lock (ObservedFontsLock)
+            {
+                foreach (var observed in ObservedFonts)
+                    observed.Key.ImFontChanged -= OnFontChanged;
+                ObservedFonts.Clear();
+            }
+            Interlocked.Increment(ref RevisionValue);
             UIBuilder            = null;
             InstalledFonts       = [];
             InstalledFontsSource = null;
@@ -110,7 +142,7 @@ public static class Fonts
         }
         if (!TryGetGameFamily(path, out var family))
         {
-            return manager.GetUIFont(scale);
+            return Observe(manager.GetUIFont(scale));
         }
         var size = manager.GetActualFontSize(scale);
         if (!UIHandles.TryGetValue(size, out var font))
@@ -118,7 +150,7 @@ public static class Fonts
             font = CreateGameFont(family, size);
             UIHandles.Add(size, font);
         }
-        return font.Available ? font : manager.GetUIFont(scale);
+        return Observe(font.Available ? font : manager.GetUIFont(scale));
     }
 
     public static IFontHandle CreateGameFont
@@ -149,6 +181,7 @@ public static class Fonts
 
     public static void Dispose()
     {
+        Interlocked.Increment(ref RevisionValue);
         List<Exception>? errors = null;
         foreach (var font in UIHandles.Values)
         {
