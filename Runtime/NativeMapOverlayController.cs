@@ -1,21 +1,31 @@
+using Dalamud.Game.Addon.Lifecycle;
+using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
 using Dalamud.Game.ClientState.Keys;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.Classes;
 using KamiToolKit.MapOverlay;
+using OmenTools;
+using TreeTools.Lifecycle;
 
 namespace TreeToolKit;
 
 public sealed unsafe class NativeMapOverlayController : IDisposable
 {
     private readonly MapOverlayController controller       = new();
+    private readonly AddonEventRegistry   addonEvents;
     private readonly IKeyState            keyState;
     private bool                          disposed;
     private bool                          requestedVisible = true;
 
-    public NativeMapOverlayController(IKeyState keyState) =>
+    public NativeMapOverlayController(IKeyState keyState)
+    {
         this.keyState = keyState ?? throw new ArgumentNullException(nameof(keyState));
+        addonEvents   = new(DService.Instance().AddonLifecycle);
+        foreach (var addonName in MAP_ADDON_NAMES)
+            addonEvents.Register(AddonEvent.PreUpdate, addonName, OnMapPreUpdate);
+    }
 
     public VirtualKey? HideKey { get; set; } = VirtualKey.CONTROL;
 
@@ -43,6 +53,9 @@ public sealed unsafe class NativeMapOverlayController : IDisposable
     {
         ObjectDisposedException.ThrowIf(disposed, this);
         var hidden = IsHideKeyPressed();
+        var agent = FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentMap.Instance();
+        if (agent is not null && HideKey != VirtualKey.CONTROL && agent->IsControlKeyPressed)
+            agent->IsControlKeyPressed = false;
         controller.IsVisible = requestedVisible && !hidden;
         if (!hidden)
             return;
@@ -59,8 +72,31 @@ public sealed unsafe class NativeMapOverlayController : IDisposable
         if (disposed)
             return;
         disposed = true;
-        controller.Dispose();
+        try
+        {
+            controller.Dispose();
+        }
+        finally
+        {
+            addonEvents.Dispose();
+        }
     }
 
     private bool IsHideKeyPressed() => HideKey is { } key && keyState[key];
+
+    private void OnMapPreUpdate(AddonEvent _, AddonArgs args)
+    {
+        if (HideKey == VirtualKey.CONTROL)
+            return;
+
+        var agent = FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentMap.Instance();
+        if (agent is not null)
+            agent->IsControlKeyPressed = false;
+    }
+
+    #region 常量
+
+    private static readonly string[] MAP_ADDON_NAMES = ["_NaviMap", "AreaMap", "TeleportTown"];
+
+    #endregion
 }
