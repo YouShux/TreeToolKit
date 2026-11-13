@@ -70,14 +70,3 @@ if (toolkit is not null)
 | 独立项目使用 | 当前版必须提供 TreeTools、一个兼容的 KamiToolKit 程序集和 OmenTools |
 
 TreeToolKit 以 KamiToolKit 为核心。Omni 固定使用 [上游 KamiToolKit](https://github.com/MidoriKami/KamiToolKit) 提交构建和发布，不修改子模块源码，也不额外引用其他 KamiToolKit 程序集。地图浮层隐藏键、节点安全处理和窗口兼容等 Omni 差分在本库实现；当前字体与少量辅助功能还使用 OmenTools。
-
-## 系统架构中的位置
-
-| 项目 | 衔接方式 |
-| --- | --- |
-| [OmniToolbox.Common](https://github.com/YouShux/OmniToolbox.Common) | 为模块提供契约、配置和共享界面 |
-| `OmniToolbox.Tree` | 私有功能模块，可按需使用 TreeToolKit |
-| [OmniToolbox.TreePublic](https://github.com/YouShux/OmniToolbox.TreePublic) | 公开功能模块，可按需使用 TreeToolKit |
-| [TreeTools](https://github.com/YouShux/TreeTools) | 提供生命周期、任务和通用运行能力 |
-| [Localizations](https://github.com/YouShux/OmniToolbox.Localizations) | 提供模块显示文字 |
-| [TreeHouseOnline](https://github.com/YouShux/OmniToolbox.TreeHouseOnline) | 展示生命周期、配置、命令和发布清单 |
