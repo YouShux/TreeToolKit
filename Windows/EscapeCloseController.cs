@@ -14,6 +14,19 @@ public sealed class EscapeCloseController
 
     public bool IsSuppressingEscape => suppressEscapeUntilRelease;
 
+    public void UpdateSuppression()
+    {
+        var escapePressed = (GetAsyncKeyState(ESCAPE_VIRTUAL_KEY) & 0x8000) != 0;
+        if (!escapePressed)
+            escapePressedLastFrame = false;
+        if (!suppressEscapeUntilRelease)
+            return;
+
+        keyState[VirtualKey.ESCAPE] = false;
+        escapePressedLastFrame = escapePressed;
+        suppressEscapeUntilRelease = escapePressed;
+    }
+
     public void Update
     (
         IEscapeClosableWindow  first,
