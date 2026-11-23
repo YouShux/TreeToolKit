@@ -3,6 +3,7 @@ using Dalamud.Interface;
 using Dalamud.Interface.GameFonts;
 using Dalamud.Interface.ManagedFontAtlas;
 using OmenTools.OmenService;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -23,6 +24,7 @@ public static class Fonts
     private static object?                                     InstalledFontsSource;
     private static string                                      CurrentPath          = string.Empty;
     private static float                                       CurrentSize;
+    private static int                                         CurrentFaceIndex;
     private static IUiBuilder?                                 UIBuilder;
     private static readonly ConditionalWeakTable<IFontHandle, object> ObservedFonts = new();
     private static readonly object ObservedFontsLock = new();
@@ -76,6 +78,7 @@ public static class Fonts
             InstalledFontsSource = null;
             CurrentPath          = string.Empty;
             CurrentSize          = 0;
+            CurrentFaceIndex     = 0;
         }
     }
 
@@ -134,20 +137,19 @@ public static class Fonts
         var manager = FontManager.Instance();
         var path = manager.Config.FontFileName;
         var baseSize = manager.GetActualFontSize(1f);
-        if (CurrentPath != path || CurrentSize != baseSize)
+        var faceIndex = manager.Config.FontFaceIndex;
+        if (CurrentPath != path || CurrentSize != baseSize || CurrentFaceIndex != faceIndex)
         {
             Dispose();
             CurrentPath = path;
             CurrentSize = baseSize;
+            CurrentFaceIndex = faceIndex;
         }
-        if (!TryGetGameFamily(path, out var family))
-        {
-            return Observe(manager.GetUIFont(scale));
-        }
+        var isGameFont = TryGetGameFamily(path, out var family);
         var size = manager.GetActualFontSize(scale);
         if (!UIHandles.TryGetValue(size, out var font))
         {
-            font = CreateGameFont(family, size);
+            font = isGameFont ? CreateGameFont(family, size) : CreateFileFont(path, faceIndex, size);
             UIHandles.Add(size, font);
         }
         return Observe(font.Available ? font : manager.GetUIFont(scale));
@@ -157,11 +159,33 @@ public static class Fonts
     (
         GameFontFamily family,
         float          size
+    ) => CreateFont(size, tk => tk.AddGameGlyphs(new GameFontStyle(family, size), null, default),
+        2, [0x20, 0xFFEF, 0]);
+
+    private static IFontHandle CreateFileFont
+    (
+        string path,
+        int    faceIndex,
+        float  size
+    ) => CreateFont(size, tk => File.Exists(path)
+        ? tk.AddFontFromFile(path, new()
+          {
+              SizePx = size, PixelSnapH = true, FontNo = faceIndex, GlyphRanges = [0x20, 0xFFEF, 0]
+          })
+        : tk.AddDalamudDefaultFont(size, [0x20, 0xFFEF, 0]),
+        1, [0x1100, 0x11FF, 0x3130, 0x318F, 0xA960, 0xA97F, 0xAC00, 0xD7FF, 0]);
+
+    private static IFontHandle CreateFont
+    (
+        float                                             size,
+        Func<IFontAtlasBuildToolkitPreBuild, ImFontPtr>     build,
+        int                                               fallbackFaceIndex,
+        ushort[]                                          fallbackRanges
     ) =>
         (UIBuilder ?? throw new InvalidOperationException("TreeToolKit 运行上下文尚未初始化。"))
         .FontAtlas.NewDelegateFontHandle(e => e.OnPreBuild(tk =>
         {
-            var font = tk.AddGameGlyphs(new GameFontStyle(family, size), null, default);
+            var font = build(tk);
             tk.AddGameSymbol(new()
             {
                 SizePx = size, MergeFont = font
@@ -171,10 +195,11 @@ public static class Fonts
                 SizePx = size, MergeFont = font
             });
             // 游戏字体缺少的中文及其他字符由随 Dalamud 分发的字体补齐。
+            // 文件字体补入韩文，保留所选字体的已有字形。
             tk.AddDalamudAssetFont(DalamudAsset.NotoSansCjkRegular,
                 new()
                 {
-                    SizePx = size, MergeFont = font, FontNo = 2, GlyphRanges = [0x20, 0xFFEF, 0]
+                    SizePx = size, MergeFont = font, FontNo = fallbackFaceIndex, GlyphRanges = fallbackRanges
                 });
             tk.Font = font;
         }));

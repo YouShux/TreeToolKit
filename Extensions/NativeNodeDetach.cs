@@ -3,7 +3,6 @@ using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using KamiToolKit.BaseTypes;
-using KamiToolKit.BaseTypes.ComponentNode;
 using KamiToolKit.Extensions;
 
 namespace TreeToolKit;
