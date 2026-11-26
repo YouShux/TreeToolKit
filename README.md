@@ -23,6 +23,8 @@ TreeToolKit 与 [TreeTools](https://github.com/YouShux/TreeTools) 的职责不�
 
 ## 原生界面链路
 
+仅使用 ImGui 的宿主通过 `Runtime.Initialize(framework, pluginInterface.UiBuilder)` 初始化字体资源，并在退出时等待返回实例的 `DisposeAsync()`。此入口不访问 KamiToolKit 的原生窗口配置，也不注册原生窗口缩放事件。
+
 ```text
 Omni 模块
 ├── TreeTools：启用作用域、任务、退出等待
