@@ -29,7 +29,7 @@ public sealed class Runtime : IAsyncDisposable
         var runtime = new Runtime(framework);
         try
         {
-            Fonts.Initialize(uiBuilder);
+            Fonts.Initialize(uiBuilder, runtime.lifetime);
             runtime.lifetime.Add(Fonts.Shutdown);
             var restoration = NativeAddonScaleRestoration.Create(addonLifecycle, ownsAddon, errorReporter);
             if (restoration is not null)

@@ -6,6 +6,7 @@ using OmenTools.OmenService;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using TreeTools.Lifecycle;
 
 namespace TreeToolKit;
 
@@ -25,7 +26,7 @@ public static class Fonts
     private static string                                      CurrentPath          = string.Empty;
     private static float                                       CurrentSize;
     private static int                                         CurrentFaceIndex;
-    private static IUiBuilder?                                 UIBuilder;
+    private static IFontAtlas?                                 UIAtlas;
     private static readonly ConditionalWeakTable<IFontHandle, object> ObservedFonts = new();
     private static readonly object ObservedFontsLock = new();
     private static long RevisionValue;
@@ -50,12 +51,24 @@ public static class Fonts
     private static void OnFontChanged(IFontHandle font, ILockedImFont lockedFont) =>
         Interlocked.Increment(ref RevisionValue);
 
-    internal static void Initialize(IUiBuilder uiBuilder)
+    internal static void Initialize(IUiBuilder uiBuilder, FeatureLifetime lifetime)
     {
         ArgumentNullException.ThrowIfNull(uiBuilder);
-        if (UIBuilder is not null)
+        if (UIAtlas is not null)
             throw new InvalidOperationException("TreeToolKit 字体资源已由另一个运行实例持有。");
-        UIBuilder = uiBuilder;
+        var atlas = uiBuilder.CreateFontAtlas(FontAtlasAutoRebuildMode.Disable, debugName: "TreeToolKit");
+        UIAtlas = atlas;
+        atlas.RebuildRecommend += Rebuild;
+        lifetime.OnStopping(() => atlas.RebuildRecommend -= Rebuild);
+        lifetime.Add(atlas.Dispose);
+
+        void Rebuild()
+        {
+            if (lifetime.IsStopping)
+                return;
+            // BuildFontsAsync 会继承调用方调度器，必须由后台任务发起。
+            lifetime.RunBackground(token => token.IsCancellationRequested ? Task.CompletedTask : atlas.BuildFontsAsync());
+        }
     }
 
     internal static void Shutdown()
@@ -73,7 +86,7 @@ public static class Fonts
                 ObservedFonts.Clear();
             }
             Interlocked.Increment(ref RevisionValue);
-            UIBuilder            = null;
+            UIAtlas              = null;
             InstalledFonts       = [];
             InstalledFontsSource = null;
             CurrentPath          = string.Empty;
@@ -162,6 +175,11 @@ public static class Fonts
     ) => CreateFont(size, tk => tk.AddGameGlyphs(new GameFontStyle(family, size), null, default),
         2, [0x20, 0xFFEF, 0]);
 
+    /// <summary>在本库独立图集中创建字体，重建工作由运行作用域在后台持有。</summary>
+    public static IFontHandle CreateFont(Action<IFontAtlasBuildToolkitPreBuild> build) =>
+        (UIAtlas ?? throw new InvalidOperationException("TreeToolKit 运行上下文尚未初始化。"))
+        .NewDelegateFontHandle(e => e.OnPreBuild(build));
+
     private static IFontHandle CreateFileFont
     (
         string path,
@@ -182,8 +200,7 @@ public static class Fonts
         int                                               fallbackFaceIndex,
         ushort[]                                          fallbackRanges
     ) =>
-        (UIBuilder ?? throw new InvalidOperationException("TreeToolKit 运行上下文尚未初始化。"))
-        .FontAtlas.NewDelegateFontHandle(e => e.OnPreBuild(tk =>
+        CreateFont(tk =>
         {
             var font = build(tk);
             tk.AddGameSymbol(new()
@@ -202,7 +219,7 @@ public static class Fonts
                     SizePx = size, MergeFont = font, FontNo = fallbackFaceIndex, GlyphRanges = fallbackRanges
                 });
             tk.Font = font;
-        }));
+        });
 
     public static void Dispose()
     {
